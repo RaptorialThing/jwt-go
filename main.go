@@ -47,10 +47,6 @@ func main() {
 
 	e.POST("/refresh-tokens",func(c echo.Context) error {
 
-		type tokenReqBody struct {
-			refreshToken
-		}
-
 		return c.String(http.StatusOK, "Refresh tokens")
 	})
 
