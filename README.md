@@ -7,11 +7,16 @@ Install Go [site](https://go.dev/doc/install)
 Install Git (sudo apt get install git)
 
 git clone https://github.com/RaptorialThing/jwt-go 
+
 or 
 git clone git@github.com:RaptorialThing/jwt-go.git
+
 cd jwt-go
+
 go mod tidy 
+
 go run main.go 
+
 
 use inpector.swagger.io or **POSTman** browser plugin or **cURL** 
 
@@ -34,6 +39,7 @@ Response
 "access-token":"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJHVUlEIjoiZThmMzkzMzEtYmMyZS00MzkyLTk3YjEtMjMyOGIzYzYzYWI2IiwiaXNzIjoidGVzdCJ9.Cp8Jj_qq7jZTG026_ZCsGMLnkmX9j9yWEDXQtPRzpUkOJNAXEaeiPrq8KOuG6vVkZsui41LaGuIcHnLFtjjo0Q",
 "refresh-token":"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJHVUlEIjoiZThmMzkzMzEtYmMyZS00MzkyLTk3YjEtMjMyOGIzYzYzYWI2IiwiaXNzIjoidGVzdCJ9.rh21a0GVhSxuhOwp8PAINoD9hMckReEOVzxbNvr9gp6RsWasMj6l3hXVOSRtbDw1_B0tm5BBqHePTwrgMIBbXw"
 }`
+
 
 need to add login authorization if refresh-token expired or lost; **safe HMAC secret generator**;
 swagger **api documentation**; dockerize this app to image; add claims to jwt for resource application like is_admin:bool 
