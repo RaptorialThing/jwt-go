@@ -3,7 +3,8 @@ import (
 	"net/http"
 	"time"
 	// "strconv"
-	"fmt"
+	"math/rand"
+	// "fmt"
 	"strings"
 
 	"github.com/labstack/echo"
@@ -12,7 +13,8 @@ import (
 	
 )
 
-var HmacSampleSecret []byte
+var refreshHmacSampleSecret []byte
+var accessHmacSampleSecret []byte
 var Refresh_base_hash string
 var AccessTokenSign string
 var RefreshTokenSign string
@@ -27,6 +29,7 @@ type User struct {
 type CustomClaims struct {
 	GUID string `json:"GUID"`
 	exp int64 `json:"exp"`
+	accessTokenHash string `json:"accessTokenHash"`
 	jwt.StandardClaims
 }
 
@@ -70,29 +73,40 @@ func generateUserTokens(guid [36]byte) (string, string, error) {
 
 	timeAccess := time.Now().Add(time.Minute * 2).Unix()
 
+	accessTokenHashEmpty := ""
+
 	accessClaims := CustomClaims{
 		stringGuid,
 		timeAccess,
+		accessTokenHashEmpty,
 		jwt.StandardClaims{
 			Issuer:    "test",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, accessClaims)
-	accessTokenString, err := token.SignedString(HmacSampleSecret)
+	accessHmacSampleSecret = []byte(randSecret(8))
+	accessTokenString, err := token.SignedString(accessHmacSampleSecret)
 
 	timeRefresh := time.Now().Add(time.Hour * 24).Unix()
+
+	accessTokenHash, errAccTokenHash := hashToken(accessTokenString)
+	if errAccTokenHash != nil {
+		err = errAccTokenHash
+	}
 
 	refreshClaims := CustomClaims{
 		stringGuid,
 		timeRefresh,
+		accessTokenHash,
 		jwt.StandardClaims{
 			Issuer:    "test",
 		},
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS512,refreshClaims)
-	refreshTokenString, err := refreshToken.SignedString(HmacSampleSecret)
+	refreshHmacSampleSecret = []byte(randSecret(8))
+	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
 	Refresh_base,errHashRefreshToken := hashToken(refreshTokenString)
 	Refresh_base_hash = Refresh_base
 	if err == nil {
@@ -100,6 +114,16 @@ func generateUserTokens(guid [36]byte) (string, string, error) {
 	}
 
 	return accessTokenString, refreshTokenString, err
+}
+
+func randSecret(n int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	b := make([]byte, n)
+    for i := range b {
+        b[i] = letterBytes[rand.Intn(len(letterBytes))]
+    }
+    return string(b)
 }
 
 func convertGuid(guid string) ([36]byte, bool) {
@@ -144,7 +168,6 @@ func convertGuid(guid string) ([36]byte, bool) {
 func main() {
 
 	e := echo.New()
-	HmacSampleSecret = []byte("secret")
 
 	e.GET("/",func(c echo.Context) error {
 		return  c.String(http.StatusOK, "Hello,world")
@@ -164,8 +187,9 @@ func main() {
 			return c.String(http.StatusOK, "Error: User already authenticated")
 		}
 	
-		accessTokenString, refreshTokenString, err := generateUserTokens(formGuid)
-		
+		accessTokenString, refreshTokenString, err := generateUserTokens(formGuid)	
+		createUser(formGuid, refreshTokenString)
+
 		if err != nil {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"error": err.Error(),
@@ -197,10 +221,9 @@ func main() {
 		decodedToken,errParse := jwt.ParseWithClaims(refresh_token, &CustomClaims{},
 			func(token *jwt.Token) (interface{}, error) {
 
-				return HmacSampleSecret, nil
+				return refreshHmacSampleSecret, nil
 
 			})
-		fmt.Println(decodedToken)
 			// ,
 			//  func(token *jwt.Token) (interface{}, error) {
 			// var res string
@@ -275,6 +298,7 @@ func main() {
 
 		if match {
 			accessTokenString, refreshTokenString, err := generateUserTokens(guid)
+
 			status = http.StatusOK
 			result = map[string]string{
 				"access-token": accessTokenString,
@@ -286,7 +310,9 @@ func main() {
 				result = map[string]string{
 					"error": "Error: tokens dont generated",
 				}
-			}	
+			}	else {
+				createUser(guid, refreshTokenString)
+			}
 
 		} else {
 			status = http.StatusUnauthorized
