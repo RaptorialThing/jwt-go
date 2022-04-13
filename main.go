@@ -2,15 +2,17 @@ package main
 import (
 	"net/http"
 	"time"
-	// "strconv"
+	"strconv"
 	"math/rand"
+	"errors"
 	// "fmt"
 	"strings"
+	bs64 "encoding/base64"
+	"encoding/json"
 
 	"github.com/labstack/echo"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
-	
 )
 
 var refreshHmacSampleSecret []byte
@@ -18,44 +20,73 @@ var accessHmacSampleSecret []byte
 var Refresh_base_hash string
 var AccessTokenSign string
 var RefreshTokenSign string
-
+const RandSecretSize = 88 // int secret lenth
+const BcryptCost = 8 // int bcrypt cost, rounds 2^BcryptCost
+const GUIDFormat = 36 // GUID  128 bit id characters count [36]byte
 
 type User struct {
-	guid [36]byte `form:"GUID" query:"GUID" json:"GUID" bson: "GUID"`
+	guid [GUIDFormat]byte `form:"GUID" query:"GUID" json:"GUID" bson: "GUID"`
 	refresh_token string `form:"refresh_token" 
 	query:"refresh_token" json: "refresh_token" bson: "refresh_token"`
 }
 
 type CustomClaims struct {
 	GUID string `json:"GUID"`
-	exp int64 `json:"exp"`
+	exp string `json:"exp"`
 	accessTokenHash string `json:"accessTokenHash"`
 	jwt.StandardClaims
 }
 
-func findUser(guid [36]byte ) bool {
+func findUser(guid [GUIDFormat]byte ) (User, bool) {
 
-	var res bool;
+	var res User
+	usr := User{}
 
 	if 1<0 {
-		res =  true
+		res =  usr
 	}
 
-	return res
+	return res,false
 }
 
-func createUser(id [36]byte, token string) (User,error) {
+func createUser(id [GUIDFormat]byte, token string) (User,error) {
 	token,err := hashToken(token)
 	u := User {
 		guid: id,
 		refresh_token: token}
-	Refresh_base_hash = token
-	return u,err
+	usr, err := saveUser(u)
+	if err != nil {
+		return User{}, err
+	}
+	return usr,err
 }
 
+func updateUser(id [GUIDFormat]byte, token string) (User, error) {
+	u,errFind := findUser(id)
+	if errFind  {
+		return User{}, errors.New("find User error")
+	}
+	new_token, errToken := hashToken(token)
+	if errToken != nil {
+		return User{}, errToken
+	}
+	u.refresh_token = new_token
+	usr,errSave := saveUser(u)
+	if errSave != nil {
+		return User{}, errSave
+	}
+
+	return usr, nil
+}
+
+func saveUser(u User) (User, error) {
+	// coonect to db and save User or errors.New("cant save user to database")
+	usr := User{}
+	return usr, nil
+}
 
 func hashToken(token string) (string,error) {
-	bytes,err := bcrypt.GenerateFromPassword([]byte(token),14)
+	bytes,err := bcrypt.GenerateFromPassword([]byte(token),BcryptCost)
 	return string(bytes), err
 }
 
@@ -64,31 +95,32 @@ func checkTokenHash(token string, hash []byte) bool {
 	return err == nil
 }
 
-func generateUserTokens(guid [36]byte) (string, string, error) {
+func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 	strGuid := make([]string, len(guid))
 	for i:= range guid {
 		strGuid[i] = string(int(guid[i]))
 	}
 	stringGuid := strings.Join(strGuid,"")
 
-	timeAccess := time.Now().Add(time.Minute * 2).Unix()
+	timeAccess := strconv.FormatInt(time.Now().Add(time.Minute * 2).Unix(),10)
 
 	accessTokenHashEmpty := ""
 
 	accessClaims := CustomClaims{
 		stringGuid,
 		timeAccess,
-		accessTokenHashEmpty,
+		accessTokenHashEmpty, 
 		jwt.StandardClaims{
 			Issuer:    "test",
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, accessClaims)
-	accessHmacSampleSecret = []byte(randSecret(8))
+	accessHmacSampleSecret = []byte(randSecret(RandSecretSize))
+
 	accessTokenString, err := token.SignedString(accessHmacSampleSecret)
 
-	timeRefresh := time.Now().Add(time.Hour * 24).Unix()
+	timeRefresh := strconv.FormatInt(time.Now().Add(time.Hour * 24).Unix(),10)
 
 	accessTokenHash, errAccTokenHash := hashToken(accessTokenString)
 	if errAccTokenHash != nil {
@@ -105,7 +137,7 @@ func generateUserTokens(guid [36]byte) (string, string, error) {
 	}
 
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS512,refreshClaims)
-	refreshHmacSampleSecret = []byte(randSecret(8))
+	refreshHmacSampleSecret = []byte(randSecret(RandSecretSize))
 	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
 	Refresh_base,errHashRefreshToken := hashToken(refreshTokenString)
 	Refresh_base_hash = Refresh_base
@@ -126,12 +158,33 @@ func randSecret(n int) string {
     return string(b)
 }
 
-func convertGuid(guid string) ([36]byte, bool) {
+func decodeTokenClaims(token string) (CustomClaims, error) {
+	s := strings.Split(token,".")
+	decodedPayload,_ := bs64.StdEncoding.DecodeString(s[1])
+	claimSlice := make(map[string]string)
+
+	err := json.Unmarshal(decodedPayload, &claimSlice)
+
+	claim := CustomClaims{}
+
+	for key := range claimSlice {
+		if key == "GUID" {
+			claim.GUID = claimSlice[key]
+		}
+		if key == "exp" {
+			claim.exp = claimSlice[key]
+		}
+	}
+
+	return claim,err
+}
+
+func convertGuid(guid string) ([GUIDFormat]byte, bool) {
 	// formGuid := []byte(guid)
 	// err := false 
-	// var id [36]byte
+	// var id [GUIDFormat]byte
 
-	// var idCompare [36]byte
+	// var idCompare [GUIDFormat]byte
 
 	// for i:= range guid {
 	// 	idCompare[i] = 0
@@ -149,14 +202,14 @@ func convertGuid(guid string) ([36]byte, bool) {
 	guidBytes := []byte(guid)
 	// stringId = strconv.Itoa(id)
 	var err bool
-	var guidBytesFixed [36]byte
+	var guidBytesFixed [GUIDFormat]byte
 	err = false
 
-	if len([36]byte{}) != len(guidBytes) {
+	if len([GUIDFormat]byte{}) != len(guidBytes) {
 		err = true
 	}
 
-	for i:= range [36]byte{} {
+	for i:= range [GUIDFormat]byte{} {
 		guidBytesFixed[i] = guidBytes[i]
 	}
 
@@ -166,7 +219,6 @@ func convertGuid(guid string) ([36]byte, bool) {
 
 
 func main() {
-
 	e := echo.New()
 
 	e.GET("/",func(c echo.Context) error {
@@ -177,24 +229,31 @@ func main() {
 		formGuid,errConvertGuid := convertGuid(c.FormValue("GUID"))
 
 		if errConvertGuid != false {
-			return c.JSON(http.StatusRequestedRangeNotSatisfiable, map[string]string{
+			return c.JSON(http.StatusUnprocessableEntity, map[string]string{
 				"error": c.FormValue("GUID")+" GUID cant format",
 			})
 		}
-		usr := User{guid: formGuid}
 
-		if findUser(usr.guid) == true {
-			return c.String(http.StatusOK, "Error: User already authenticated")
+		if authFoundUser, errFindUser := findUser(formGuid); errFindUser == true  {
+			if authFoundUser.guid != [GUIDFormat]byte{} {
+
+			}
+			return c.String(http.StatusOK, "Error: User already authenticated "+c.FormValue("GUID"))
 		}
+
 	
 		accessTokenString, refreshTokenString, err := generateUserTokens(formGuid)	
-		createUser(formGuid, refreshTokenString)
+		//_, errCreateUser := createUser(formGuid, refreshTokenString)
 
-		if err != nil {
+		if err != nil  {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"error": err.Error(),
 			})
-		} else {
+		// } else if errCreateUser != nil {
+		// 	return c.JSON(http.StatusUnauthorized, map[string]string{
+		// 		"error": errCreateUser.Error(),
+		// 	})
+	    } else {
 
 			return c.JSON(http.StatusOK, map[string]string{
 				"access-token": accessTokenString,
@@ -211,13 +270,14 @@ func main() {
 		refresh_token := c.FormValue("refresh-token")
 
 		if refresh_token == "" {
-			return c.JSON(http.StatusRequestedRangeNotSatisfiable,
+			return c.JSON(http.StatusUnprocessableEntity,
 				map[string]string{"error":"give me refresh-token"})
 		}
 		
-		// var Guid [36]byte
+		// var Guid [GUIDFormat]byte
 		// var ErrParse bool
 
+		// get refreshHmacSampleSecretHash for GUID
 		decodedToken,errParse := jwt.ParseWithClaims(refresh_token, &CustomClaims{},
 			func(token *jwt.Token) (interface{}, error) {
 
@@ -247,7 +307,7 @@ func main() {
 			// } else {
 			// 	res = ""
 			// 	err = "Error parsing token error"
-			// 	guid = [36]byte{}
+			// 	guid = [GUIDFormat]byte{}
 			// 	ErrParse = true
 				
 			// }
@@ -265,35 +325,45 @@ func main() {
 		status := http.StatusOK
 
 		if errParse != nil {
-			status = http.StatusRequestedRangeNotSatisfiable
+			status = http.StatusUnprocessableEntity
 			result = map[string]string{
-				"error": "cant decode token",
+				"error": "can not decode token",
 			}
 		} else {
+			
+			claims, ok := decodedToken.Claims.(*CustomClaims); 
+			if ok && decodedToken.Valid {
 		
-		claims, ok  := decodedToken.Claims.(*CustomClaims) 
-
-		if ok && decodedToken.Valid {
-			
-		} else {
-			
-				status = http.StatusRequestedRangeNotSatisfiable
+				
+			}	else {
+				status = http.StatusInternalServerError
 				result = map[string]string{
-					"error": "GUID not found",
+					"error": "can not decode token",
 				}
-		
-		}
-		
-
-		guid, errConv := convertGuid(claims.GUID)
-		if errConv {
-			status = http.StatusInternalServerError
-			result = map[string]string{
-				"error":"Error GUID cant format "+claims.GUID,
+				return c.JSON(status, result)
 			}
-		}
-	
 
+			guid, errAsserGuid := convertGuid(claims.GUID)
+			if errAsserGuid  {
+
+			}
+		
+
+        //claims,errDecodeClaims := decodeTokenClaims(refresh_token)
+		//guidByte,errConvByte := convertGuid(claims.GUID)
+
+		// if errDecodeClaims != nil || errConvByte {	
+		// 	status = http.StatusUnprocessableEntity
+		// 	result = map[string]string{
+		// 		"error": "GUID not found or decode error",
+		// 	}
+		// 	return c.JSON(status, result)
+
+		// } 		
+		
+		//guid := guidByte	
+		//fmt.Println(refresh_token)
+	
 		match := checkTokenHash(refresh_token, []byte(Refresh_base_hash))
 
 		if match {
@@ -307,11 +377,11 @@ func main() {
 
 			if err != nil {
 				status = http.StatusInternalServerError
-				result = map[string]string{
-					"error": "Error: tokens dont generated",
-				}
-			}	else {
-				createUser(guid, refreshTokenString)
+				result = map[string]string {
+					"error": "Error: tokens did not generate",}
+				
+				} else {
+				//updateUser(guid, refreshTokenString)
 			}
 
 		} else {
@@ -320,7 +390,7 @@ func main() {
 				"error":"Error: refresh token not valid; to-do: report incident",
 			}		
 		}
-	}
+	 }
 
 		return c.JSON(status, result)
 	})
