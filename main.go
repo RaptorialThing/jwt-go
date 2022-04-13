@@ -7,8 +7,6 @@ import (
 	"errors"
 	// "fmt"
 	"strings"
-	bs64 "encoding/base64"
-	"encoding/json"
 
 	"github.com/labstack/echo"
 	"github.com/golang-jwt/jwt"
@@ -158,49 +156,8 @@ func randSecret(n int) string {
     return string(b)
 }
 
-func decodeTokenClaims(token string) (CustomClaims, error) {
-	s := strings.Split(token,".")
-	decodedPayload,_ := bs64.StdEncoding.DecodeString(s[1])
-	claimSlice := make(map[string]string)
-
-	err := json.Unmarshal(decodedPayload, &claimSlice)
-
-	claim := CustomClaims{}
-
-	for key := range claimSlice {
-		if key == "GUID" {
-			claim.GUID = claimSlice[key]
-		}
-		if key == "exp" {
-			claim.exp = claimSlice[key]
-		}
-	}
-
-	return claim,err
-}
-
 func convertGuid(guid string) ([GUIDFormat]byte, bool) {
-	// formGuid := []byte(guid)
-	// err := false 
-	// var id [GUIDFormat]byte
-
-	// var idCompare [GUIDFormat]byte
-
-	// for i:= range guid {
-	// 	idCompare[i] = 0
-	// }
-
-	// if len(formGuid) != len(idCompare) {
-	// 	err = true
-	// 	id = idCompare
-	// } else {
-	// 	   for i:= range guid {
-	// 		   id[i] = formGuid[0]
-	// 	   }
-	// }
-
 	guidBytes := []byte(guid)
-	// stringId = strconv.Itoa(id)
 	var err bool
 	var guidBytesFixed [GUIDFormat]byte
 	err = false
@@ -243,16 +200,11 @@ func main() {
 
 	
 		accessTokenString, refreshTokenString, err := generateUserTokens(formGuid)	
-		//_, errCreateUser := createUser(formGuid, refreshTokenString)
 
 		if err != nil  {
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"error": err.Error(),
 			})
-		// } else if errCreateUser != nil {
-		// 	return c.JSON(http.StatusUnauthorized, map[string]string{
-		// 		"error": errCreateUser.Error(),
-		// 	})
 	    } else {
 
 			return c.JSON(http.StatusOK, map[string]string{
@@ -274,52 +226,12 @@ func main() {
 				map[string]string{"error":"give me refresh-token"})
 		}
 		
-		// var Guid [GUIDFormat]byte
-		// var ErrParse bool
-
-		// get refreshHmacSampleSecretHash for GUID
 		decodedToken,errParse := jwt.ParseWithClaims(refresh_token, &CustomClaims{},
 			func(token *jwt.Token) (interface{}, error) {
 
 				return refreshHmacSampleSecret, nil
 
 			})
-			// ,
-			//  func(token *jwt.Token) (interface{}, error) {
-			// var res string
-			// var err string
-
-			// claims, ok := token.Claims.(jwt.MapClaims); 
-			// if ok && token.Valid {
-			// 	var assertedGuid string
-			// 	assertedGuid = claims["GUID"]
-			// 	guid, err := convertGuid(assertedGuid)
-			// 	if err {
-			// 		res = ""
-			// 		err = "Error GUID cant format "+assertedGuid
-			// 	}
-
-			// 	Guid = guid
-			// 	res = "OK"
-			// 	err = ""
-			// 	ErrParse = false
-				
-			// } else {
-			// 	res = ""
-			// 	err = "Error parsing token error"
-			// 	guid = [GUIDFormat]byte{}
-			// 	ErrParse = true
-				
-			// }
-
-
-			// if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			// 	res = ""
-			// 	err = "Unexpected signing method"
-			// }
-
-				//  return rsa.Public, nil
-			//   })
 
 		var result map[string]string
 		status := http.StatusOK
@@ -346,24 +258,8 @@ func main() {
 			guid, errAsserGuid := convertGuid(claims.GUID)
 			if errAsserGuid  {
 
-			}
-		
+			}		
 
-        //claims,errDecodeClaims := decodeTokenClaims(refresh_token)
-		//guidByte,errConvByte := convertGuid(claims.GUID)
-
-		// if errDecodeClaims != nil || errConvByte {	
-		// 	status = http.StatusUnprocessableEntity
-		// 	result = map[string]string{
-		// 		"error": "GUID not found or decode error",
-		// 	}
-		// 	return c.JSON(status, result)
-
-		// } 		
-		
-		//guid := guidByte	
-		//fmt.Println(refresh_token)
-	
 		match := checkTokenHash(refresh_token, []byte(Refresh_base_hash))
 
 		if match {
@@ -381,7 +277,7 @@ func main() {
 					"error": "Error: tokens did not generate",}
 				
 				} else {
-				//updateUser(guid, refreshTokenString)
+
 			}
 
 		} else {
