@@ -5,12 +5,13 @@ import (
 	"strconv"
 	"math/rand"
 	"errors"
-	// "fmt"
+	"fmt"
 	"strings"
 
 	"github.com/labstack/echo"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/RaptorialThing/jwt-go/database"
 )
 
 var refreshHmacSampleSecret []byte
@@ -172,7 +173,6 @@ func convertGuid(guid string) ([GUIDFormat]byte, bool) {
 
 	return guidBytesFixed, err
 }
-
 
 
 func main() {
