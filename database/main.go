@@ -133,6 +133,44 @@ func SaveUser(user User) (bool) {
 
 }
 
+func UpdateUser(user User) bool {
+
+	usersSaved,err := GetUser(user.Guid)
+	userSaved := usersSaved[len(usersSaved)-1]
+	id := userSaved.ID 
+
+	if err != nil {
+		return false
+	}
+
+	userSaved.Refresh_token = user.Refresh_token
+	userSaved.UpdatedAt = time.Now()
+
+	filter := bson.D{{"_id", id}}
+	update := bson.D{{"$set",
+	bson.D{
+		{"refresh_token", userSaved.Refresh_token},
+		{"updated_at", time.Now()},
+	},
+	}}
+
+	_, errUpd := usersCollection.UpdateOne(
+		ctx,
+		filter,
+        update,
+	)
+
+	usrYX,_ := GetUser(user.Guid)
+
+	fmt.Println(usrYX[0].Refresh_token)
+
+	if errUpd != nil {
+		return false
+	}
+
+	return true	
+}
+
 func GetUser(guid [36]byte) ([]*UserMongo, error) {
 	
 	filter := bson.D{
