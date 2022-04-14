@@ -1,4 +1,5 @@
 package main
+
 import (
 	"net/http"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
-	//"example.com/database"
+	"example.com/database"
 )
 
 var refreshHmacSampleSecret []byte
@@ -140,6 +141,7 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
 	Refresh_base,errHashRefreshToken := hashToken(refreshTokenString)
 	Refresh_base_hash = Refresh_base
+	
 	if err == nil {
 		err = errHashRefreshToken
 	}
@@ -206,6 +208,26 @@ func main() {
 				"error": err.Error(),
 			})
 	    } else {
+
+				guidBytes,errConvert := ConvertGuid(c.FormValue("GUID"))
+
+				if errConvert {
+					return c.JSON(http.StatusInternalServerError, map[string]string{
+						"error": "guid format",
+					})
+				}
+
+				userToSave := database.User{}
+				userToSave.Guid = guidBytes
+				userToSave.Refresh_token = Refresh_base_hash
+
+				resSaveUsr := database.SaveUser(userToSave)
+				if !resSaveUsr {
+						return c.JSON(http.StatusInternalServerError, map[string]string{
+							"error": "save token hash",
+						})
+				}
+
 
 			return c.JSON(http.StatusOK, map[string]string{
 				"access-token": accessTokenString,
@@ -293,3 +315,4 @@ func main() {
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
+

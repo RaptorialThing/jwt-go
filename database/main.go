@@ -1,4 +1,4 @@
-package main
+package database
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/bson"
-	"example.com/jwtgo"
 	// "github.com/urfave/cli/v2"
 )
 
@@ -30,16 +29,16 @@ func init() {
 
 type UserMongo struct {
 	ID        primitive.ObjectID `bson:"_id"`
-	guid [36]byte `bson: "guid"`
-	refresh_token string `bson: "refresh_token"`
+	Guid [36]byte `bson:"guid"`
+	Refresh_token string `bson:"refresh_token"`
 	CreatedAt time.Time          `bson:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at"`
 
 }
 
 type User struct {
-	guid [36]byte `bson: "GUID"`
-	refresh_token string ` bson: "refresh_token"`
+	Guid [36]byte `bson: "Guid"`
+	Refresh_token string ` bson: "Refresh_token"`
 }
 
 func createUser(user *UserMongo) error {
@@ -84,6 +83,24 @@ func FilterUsers(filter interface{}) ([]*UserMongo, error) {
 	return users, nil
 }
 
+func ConvertGuid(guid string) ([36]byte, bool) {
+	guidBytes := []byte(guid)
+	var err bool
+	var guidBytesFixed [36]byte
+	err = false
+
+	if len([36]byte{}) != len(guid) {
+		err = true
+		return [36]byte{}, err
+	}
+
+	for i := range [36]byte{} {
+		guidBytesFixed[i] = guidBytes[i]
+	}
+
+	return guidBytesFixed, err
+}
+
 func GetUsers() ([]*UserMongo, error) {
 	// filter := bson.D{
 	// 	primitive.E{Key: "refresh_token", Value: "zQMDQiYCOhgHOvgSeycJPJHYNufNjJhhjUVRuSqfgqVMkPYVkURUpiFvIZRgBmyArKCtzkjkZIvaBjMkXVbWGvbq"},
@@ -96,14 +113,14 @@ func GetUsers() ([]*UserMongo, error) {
 
 func SaveUser(user User) (bool) {
 
-	userMongo := UserMongo{
+	userMongo := &UserMongo{
 		ID: primitive.NewObjectID(),
-		guid: user.guid,
-		refresh_token: user.refresh_token,
+		Guid: user.Guid,
+		Refresh_token: user.Refresh_token,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-
+	fmt.Println(userMongo)
 	userResult, err := usersCollection.InsertOne(ctx, userMongo)
 
 	if err != nil {
@@ -117,29 +134,9 @@ func SaveUser(user User) (bool) {
 }
 
 func GetUser(guid [36]byte) ([]*UserMongo, error) {
-	// client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017/"))
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
-	// ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    // err = client.Connect(ctx)
-    // if err != nil {
-    //     log.Fatal(err)
-    // }
-    // defer client.Disconnect(ctx)
-
-	// db := client.Database("test")
-	// usersCollection := db.Collection("users")
-
-	// var result UserMongo
-	// err = usersCollection.FindOne(context.TODO(),bson.D{primitive.E{Key:"guid",Value:guid}}).Decode(&result)
-	// if err != nil {
-	// 	if err == mongo.ErrNoDocuments {
-	// 		return UserMongo{},err
-	// 	}
-	// } 
+	
 	filter := bson.D{
-		primitive.E{Key:"GUID", Value: guid},
+		primitive.E{Key:"guid", Value: guid},
 	}
 	result, err := FilterUsers(filter)
 
@@ -147,37 +144,5 @@ func GetUser(guid [36]byte) ([]*UserMongo, error) {
 }
 
 func main() {
-	// byteGuid,errConv := jwtgo.ConvertGuid("e8f39331-bc2e-4392-97b1-2328b3c63ab6")
-	// if errConv {
-	// 	fmt.Println("Error conv")
-	// }
-
-
-	// userToSave := User{
-	// 	guid: byteGuid,
-	// 	refresh_token: "$2a$08$h5ZQnwD2GI5C9eDG3ECMcOaMylqkk12Oem.WgloitHcV0nmqDZvGm",
-	// }
-
-	// resSaveUsr := SaveUser(userToSave)
-	// if resSaveUsr {
-	// 	fmt.Println("Save success")
-	// } else {
-	// 	fmt.Println("Save error")
-	// }
-
-
-
-	byteGuidTwo,errConv := jwtgo.ConvertGuid("e8f39331-bc2e-4392-97b1-2328b3c63ab6")
-
-	if errConv {
-		fmt.Println("Error convert")
-	}
-
-	usr,err := GetUser(byteGuidTwo)
-	if err != nil {
-		fmt.Println("Error get User "+err.Error())
-	}
-
-	fmt.Println(usr)
 
 }
