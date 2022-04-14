@@ -1,4 +1,4 @@
-module example.com/RaptorialThing/jwt-go
+module example.com/jwt-go
 
 go 1.18
 

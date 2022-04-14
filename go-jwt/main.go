@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
-	"example.com/database"
+	//"example.com/database"
 )
 
 var refreshHmacSampleSecret []byte
@@ -157,7 +157,7 @@ func randSecret(n int) string {
     return string(b)
 }
 
-func convertGuid(guid string) ([GUIDFormat]byte, bool) {
+func ConvertGuid(guid string) ([GUIDFormat]byte, bool) {
 	guidBytes := []byte(guid)
 	var err bool
 	var guidBytesFixed [GUIDFormat]byte
@@ -178,13 +178,12 @@ func convertGuid(guid string) ([GUIDFormat]byte, bool) {
 
 func main() {
 	e := echo.New()
-	database.Hi()
 	e.GET("/",func(c echo.Context) error {
 		return  c.String(http.StatusOK, "Hello,world")
 	})
 
 	e.POST("/authenticate",func(c echo.Context) error {
-		formGuid,errConvertGuid := convertGuid(c.FormValue("GUID"))
+		formGuid,errConvertGuid := ConvertGuid(c.FormValue("GUID"))
 
 		if errConvertGuid != false {
 			return c.JSON(http.StatusUnprocessableEntity, map[string]string{
@@ -256,7 +255,7 @@ func main() {
 				return c.JSON(status, result)
 			}
 
-			guid, errAsserGuid := convertGuid(claims.GUID)
+			guid, errAsserGuid := ConvertGuid(claims.GUID)
 			if errAsserGuid  {
 
 			}		
