@@ -1,4 +1,4 @@
-package database
+package main
 
 import (
 	"context"
@@ -11,14 +11,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/bson"
+	"example.com/jwtgo"
 	// "github.com/urfave/cli/v2"
 )
 
-var collection *mongo.Collection
+var usersCollection *mongo.Collection
 var ctx = context.TODO()
-func Hi() (string) {
-	return "Hello"	
-}
+
 func init() {
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017/")
 	client, err := mongo.Connect(ctx, clientOptions)
@@ -26,7 +25,7 @@ func init() {
 		log.Fatal(err)
 	}
 
-	collection = client.Database("test").Collection("users")
+	usersCollection = client.Database("test").Collection("users")
 } 
 
 type UserMongo struct {
@@ -44,19 +43,20 @@ type User struct {
 }
 
 func createUser(user *UserMongo) error {
-	_, err := collection.InsertOne(ctx, user)
+	_, err := usersCollection.InsertOne(ctx, user)
   return err
 }
 
 func getAll() ([]*UserMongo, error) {
 	  filter := bson.D{{}}
-	  return filterUsers(filter)
+	  return FilterUsers(filter)
   }
 
-  func filterUsers(filter interface{}) ([]*UserMongo, error) {
+func FilterUsers(filter interface{}) ([]*UserMongo, error) {
+
 	var users []*UserMongo
 
-	cur, err := collection.Find(ctx, filter)
+	cur, err := usersCollection.Find(ctx, filter)
 	if err != nil {
 		return users, err
 	}
@@ -84,32 +84,24 @@ func getAll() ([]*UserMongo, error) {
 	return users, nil
 }
 
-func getUsers(guid [36]byte) ([]*UserMongo, error) {
-	filter := bson.D{
-		primitive.E{Key: "refresh_token", Value: "zQMDQiYCOhgHOvgSeycJPJHYNufNjJhhjUVRuSqfgqVMkPYVkURUpiFvIZRgBmyArKCtzkjkZIvaBjMkXVbWGvbq"},
-	}
+func GetUsers() ([]*UserMongo, error) {
+	// filter := bson.D{
+	// 	primitive.E{Key: "refresh_token", Value: "zQMDQiYCOhgHOvgSeycJPJHYNufNjJhhjUVRuSqfgqVMkPYVkURUpiFvIZRgBmyArKCtzkjkZIvaBjMkXVbWGvbq"},
+	// }
 
-	return filterUsers(filter)
+	filter := bson.D{{}}
+
+	return FilterUsers(filter)
 }
 
-func saveUser(user User) (bool) {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017/"))
-    if err != nil {
-        log.Fatal(err)
-    }
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    err = client.Connect(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Disconnect(ctx)
-
-	db := client.Database("test")
-	usersCollection := db.Collection("users")
+func SaveUser(user User) (bool) {
 
 	userMongo := UserMongo{
+		ID: primitive.NewObjectID(),
 		guid: user.guid,
 		refresh_token: user.refresh_token,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	userResult, err := usersCollection.InsertOne(ctx, userMongo)
@@ -124,66 +116,66 @@ func saveUser(user User) (bool) {
 
 }
 
-func getUser(guid [36]byte) (UserMongo, error) {
-	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017/"))
-    if err != nil {
-        log.Fatal(err)
-    }
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-    err = client.Connect(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer client.Disconnect(ctx)
+func GetUser(guid [36]byte) ([]*UserMongo, error) {
+	// client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017/"))
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+	// ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+    // err = client.Connect(ctx)
+    // if err != nil {
+    //     log.Fatal(err)
+    // }
+    // defer client.Disconnect(ctx)
 
-	db := client.Database("test")
-	usersCollection := db.Collection("users")
+	// db := client.Database("test")
+	// usersCollection := db.Collection("users")
 
-	var result UserMongo
-	err = usersCollection.FindOne(context.TODO(),bson.D{primitive.E{Key:"guid",Value:guid}}).Decode(&result)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return UserMongo{},err
-		}
-	} 
+	// var result UserMongo
+	// err = usersCollection.FindOne(context.TODO(),bson.D{primitive.E{Key:"guid",Value:guid}}).Decode(&result)
+	// if err != nil {
+	// 	if err == mongo.ErrNoDocuments {
+	// 		return UserMongo{},err
+	// 	}
+	// } 
+	filter := bson.D{
+		primitive.E{Key:"GUID", Value: guid},
+	}
+	result, err := FilterUsers(filter)
 
 	return result,err
 }
 
 func main() {
+	// byteGuid,errConv := jwtgo.ConvertGuid("e8f39331-bc2e-4392-97b1-2328b3c63ab6")
+	// if errConv {
+	// 	fmt.Println("Error conv")
+	// }
 
-	user := &UserMongo{
-		ID:        primitive.NewObjectID(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		guid: [36]byte{},
-		refresh_token: "zQMDQiYCOhgHOvgSeycJPJHYNufNjJhhjUVRuSqfgqVMkPYVkURUpiFvIZRgBmyArKCtzkjkZIvaBjMkXVbWGvbq",
+
+	// userToSave := User{
+	// 	guid: byteGuid,
+	// 	refresh_token: "$2a$08$h5ZQnwD2GI5C9eDG3ECMcOaMylqkk12Oem.WgloitHcV0nmqDZvGm",
+	// }
+
+	// resSaveUsr := SaveUser(userToSave)
+	// if resSaveUsr {
+	// 	fmt.Println("Save success")
+	// } else {
+	// 	fmt.Println("Save error")
+	// }
+
+
+
+	byteGuidTwo,errConv := jwtgo.ConvertGuid("e8f39331-bc2e-4392-97b1-2328b3c63ab6")
+
+	if errConv {
+		fmt.Println("Error convert")
 	}
 
-	var gUID [36]byte
-	for i:=0;i<35;i++{
-		gUID[i] = byte(i)
-	} 
-
-	usrSave := User{
-		guid: gUID,
-		refresh_token: "123",
-	}
-
-	resSaveUsr := saveUser(usrSave)
-	if resSaveUsr {
-		fmt.Println("Save success")
-	} else {
-		fmt.Println("Save error")
-	}
-
-	if user != nil {
-
-	}
-
-	usr,err := getUser(gUID)
+	usr,err := GetUser(byteGuidTwo)
 	if err != nil {
-		fmt.Println("Error "+err.Error())
+		fmt.Println("Error get User "+err.Error())
 	}
 
 	fmt.Println(usr)

@@ -11,7 +11,7 @@ git clone https://github.com/RaptorialThing/jwt-go
 or 
 git clone git@github.com:RaptorialThing/jwt-go.git
 
-cd jwt-go
+cd jwt-go/go-jwt
 
 go mod tidy 
 
