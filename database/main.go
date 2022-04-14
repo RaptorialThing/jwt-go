@@ -120,7 +120,6 @@ func SaveUser(user User) (bool) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	fmt.Println(userMongo)
 	userResult, err := usersCollection.InsertOne(ctx, userMongo)
 
 	if err != nil {

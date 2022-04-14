@@ -42,5 +42,5 @@ Response
 
 
 need to add login authorization if refresh-token expired or lost; **safe HMAC secret generator**;
-swagger **api documentation**; dockerize this app to image; add claims to jwt for resource application like is_admin:bool 
+swagger **api documentation**; dockerize this app to image; add claims to jwt for resource application like is_admin:bool;add check refresh-access expiration time
 

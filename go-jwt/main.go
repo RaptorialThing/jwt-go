@@ -344,7 +344,7 @@ func main() {
 					userToUpdate := database.User{}
 					userToUpdate.Guid = guid
 					userToUpdate.Refresh_token = Refresh_base_hash
-					fmt.Println("11")
+					fmt.Println(claims.GUID)
 					errResUpd := database.UpdateUser(userToUpdate)
 		
 					if !errResUpd {
