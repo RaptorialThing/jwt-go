@@ -108,7 +108,9 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 	}
 	stringGuid := strings.Join(strGuid,"")
 
-	timeAccess := strconv.FormatInt(time.Now().Add(time.Minute * 2).Unix(),10)
+	timeAccessInt := time.Now().Add(time.Minute * 2).Unix()
+	timeAccess := strconv.FormatInt(timeAccessInt,10)
+	timeAccess = string(timeAccess)
 
 	accessTokenHashEmpty := ""
 
@@ -118,20 +120,23 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 		accessTokenHashEmpty, 
 		jwt.StandardClaims{
 			Issuer:    "test",
+			ExpiresAt: timeAccessInt,
 		},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, accessClaims)
 	accessHmacSampleSecret = []byte(randSecret(RandSecretSize))
 
 	accessTokenString, err := token.SignedString(accessHmacSampleSecret)
 
-	timeRefresh := strconv.FormatInt(time.Now().Add(time.Hour * 24).Unix(),10)
+	timeRefreshInt := time.Now().Add(time.Hour * 24).Unix()
+	timeRefresh := strconv.FormatInt(timeRefreshInt,10)
+	timeRefresh = string(timeRefresh)
 
 	accessTokenHash, errAccTokenHash := hashToken(accessTokenString)
 	if errAccTokenHash != nil {
 		err = errAccTokenHash
 	}
+	accessTokenHash = string(accessTokenHash)
 
 	refreshClaims := CustomClaims{
 		stringGuid,
@@ -139,9 +144,10 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 		accessTokenHash,
 		jwt.StandardClaims{
 			Issuer:    "test",
+			ExpiresAt: timeRefreshInt,
 		},
 	}
-
+	fmt.Println(refreshClaims)
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS512,refreshClaims)
 	refreshHmacSampleSecret = []byte(randSecret(RandSecretSize))
 	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
