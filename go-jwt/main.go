@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"math/rand"
 	//"errors"
-	"fmt"
+	//"fmt"
 	"strings"
 
 	bs64 "encoding/base64"
@@ -54,42 +54,6 @@ func findUser(guid [GUIDFormat]byte ) (*database.UserMongo, bool) {
 
 	return res,resBool
 }
-
-// func createUser(id [GUIDFormat]byte, token string) (User,error) {
-// 	token,err := hashToken(token)
-// 	u := User {
-// 		guid: id,
-// 		refresh_token: token}
-// 	usr, err := saveUser(u)
-// 	if err != nil {
-// 		return User{}, err
-// 	}
-// 	return usr,err
-// }
-
-// func updateUser(id [GUIDFormat]byte, token string) (User, error) {
-// 	u,errFind := findUser(id)
-// 	if errFind  {
-// 		return User{}, errors.New("find User error")
-// 	}
-// 	new_token, errToken := hashToken(token)
-// 	if errToken != nil {
-// 		return User{}, errToken
-// 	}
-// 	u.refresh_token = new_token
-// 	usr,errSave := saveUser(u)
-// 	if errSave != nil {
-// 		return User{}, errSave
-// 	}
-
-// 	return usr, nil
-// }
-
-// func saveUser(u User) (User, error) {
-// 	// coonect to db and save User or errors.New("cant save user to database")
-// 	usr := User{}
-// 	return usr, nil
-// }
 
 func hashToken(token string) (string,error) {
 	bytes,err := bcrypt.GenerateFromPassword([]byte(token),BcryptCost)
@@ -147,7 +111,7 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 			ExpiresAt: timeRefreshInt,
 		},
 	}
-	fmt.Println(refreshClaims)
+
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS512,refreshClaims)
 	refreshHmacSampleSecret = []byte(randSecret(RandSecretSize))
 	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
@@ -288,13 +252,6 @@ func main() {
 			return c.JSON(http.StatusUnprocessableEntity,
 				map[string]string{"error":"give me refresh-token"})
 		}
-		
-		// decodedToken,errParse := jwt.ParseWithClaims(refresh_token, &CustomClaims{},
-		// 	func(token *jwt.Token) (interface{}, error) {
-
-		// 		return refreshHmacSampleSecret, nil
-
-		// 	})
 
 		var result map[string]string
 		status := http.StatusOK
@@ -371,7 +328,7 @@ func main() {
 					userToUpdate := database.User{}
 					userToUpdate.Guid = guid
 					userToUpdate.Refresh_token = Refresh_base_hash
-					fmt.Println(strGuidForConv)
+				
 					errResUpd := database.UpdateUser(userToUpdate)
 		
 					if !errResUpd {
@@ -398,4 +355,3 @@ func main() {
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
-

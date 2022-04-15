@@ -6,7 +6,7 @@ import (
 
 	// "errors"
 	"time"
-	"fmt"
+	//"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -161,7 +161,10 @@ func UpdateUser(user User) bool {
 
 	usrYX,_ := GetUser(user.Guid)
 
-	fmt.Println(usrYX[0].Refresh_token)
+	if usrYX != nil {
+
+	}
+	// fmt.Println(usrYX[0].Refresh_token)
 
 	if errUpd != nil {
 		return false
