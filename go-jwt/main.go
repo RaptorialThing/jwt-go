@@ -151,7 +151,8 @@ func generateUserTokens(guid [GUIDFormat]byte) (string, string, error) {
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS512,refreshClaims)
 	refreshHmacSampleSecret = []byte(randSecret(RandSecretSize))
 	refreshTokenString, err := refreshToken.SignedString(refreshHmacSampleSecret)
-	Refresh_base,errHashRefreshToken := hashToken(refreshTokenString)
+	refreshTokenSign := strings.Split(refreshTokenString,".")[2]
+	Refresh_base,errHashRefreshToken := hashToken(refreshTokenSign)
 	Refresh_base_hash = Refresh_base
 	
 	if err == nil {
@@ -298,12 +299,10 @@ func main() {
 		var result map[string]string
 		status := http.StatusOK
 			
-			claims, okClaims := parseClaims(refresh_token)
-
-			if okClaims  {
+			tokenParsed, _, errClaim := new(jwt.Parser).ParseUnverified(refresh_token, jwt.MapClaims{})
+			
+			if errClaim != nil {
 				
-				
-			}	else {
 				status = http.StatusInternalServerError
 				result = map[string]string{
 					"error": "can not decode token",
@@ -311,7 +310,28 @@ func main() {
 				return c.JSON(status, result)
 			}
 
-			guid, errAsserGuid := ConvertGuid(claims.GUID)
+			claims, okParsed := tokenParsed.Claims.(jwt.MapClaims)
+			if okParsed {
+			
+			} else {
+				status = http.StatusInternalServerError
+				result = map[string]string{
+					"error": "can not decode token",
+				}
+				return c.JSON(status, result)
+			}
+
+			
+			strGuidForConv := claims["GUID"]
+			if strGuidForConv, ok := strGuidForConv.(string); !ok {
+				status = http.StatusInternalServerError
+				result = map[string]string{
+					"error": "can not decode token",
+				}
+				return c.JSON(status, result)
+			} else {
+			
+			guid, errAsserGuid := ConvertGuid(strGuidForConv)
 			if errAsserGuid  {
 				status = http.StatusInternalServerError
 				result = map[string]string{
@@ -330,7 +350,8 @@ func main() {
 		}
 
 		user_refresh_hash := userWithGuid.Refresh_token
-		match := checkTokenHash(refresh_token, []byte(user_refresh_hash))
+		sign := strings.Split(refresh_token,".")[2]
+		match := checkTokenHash(sign, []byte(user_refresh_hash))
 
 		if match {
 			accessTokenString, refreshTokenString, err := generateUserTokens(guid)
@@ -350,7 +371,7 @@ func main() {
 					userToUpdate := database.User{}
 					userToUpdate.Guid = guid
 					userToUpdate.Refresh_token = Refresh_base_hash
-					fmt.Println(claims.GUID)
+					fmt.Println(strGuidForConv)
 					errResUpd := database.UpdateUser(userToUpdate)
 		
 					if !errResUpd {
@@ -370,7 +391,7 @@ func main() {
 				"error":"Error: refresh token not valid; to-do: report incident",
 			}		
 		}
-	 
+	}
 
 		return c.JSON(status, result)
 	})
